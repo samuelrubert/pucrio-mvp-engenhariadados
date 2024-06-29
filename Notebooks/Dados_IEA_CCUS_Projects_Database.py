@@ -44,7 +44,7 @@ cellposition = "A1"
 # COMMAND ----------
 
 # Caminho dos dados
-path_arquivo = "https://github.com/samuelrubert/pucrio-mvp-engenhariadados/raw/ccus_mvp/Dados/IEA_CCUS_Projects_Database.xlsx"
+path_arquivo = "https://github.com/samuelrubert/pucrio-mvp-engenhariadados/raw/main/Dados/IEA_CCUS_Projects_Database.xlsx"
 
 # COMMAND ----------
 
@@ -166,16 +166,12 @@ display(df.limit(3))
 # COMMAND ----------
 
 # MAGIC %md
-# MAGIC #### Não iremos remover as colunas Ref totalmente em branco, porque um dia podem colocar dado e quebrar a tabela, etc etc
-
-# COMMAND ----------
-
-# MAGIC %md
 # MAGIC ### Tratar coluna Announced_capacity_Mt_CO2_yr
-# MAGIC Esta coluna possui alguns valores expressos em faixas, como "0.3 - 0.8". Para permitir cálculos e agregações, vamos transformar essa coluna em duas: uma contendo o valor mínimo, outra contendo o valor máximo. Valores da coluna original que não são expressos em faixas serão repetidos, de forma a manter a integridade da informação de maneira independente nas duas colunas.
+# MAGIC Essa coluna possui alguns valores expressos em faixas, como "0.3 - 0.8". Para permitir cálculos e agregações, vamos transformar essa coluna em duas: uma contendo o valor mínimo, outra contendo o valor máximo. Valores da coluna original que não sejam expressos em faixas serão repetidos, de forma a manter a integridade da informação de maneira independente nas duas colunas.
 
 # COMMAND ----------
 
+# Dividir a coluna
 split_col = sf.split(df['Announced_capacity_Mt_CO2_yr'], "-")
 
 # Criar coluna de valor mínimo
@@ -184,29 +180,15 @@ df = df.withColumn('Announced_capacity_low_Mt_CO2_yr', sf.when(sf.col('Announced
 # Criar coluna de valor máximo
 df = df.withColumn('Announced_capacity_high_Mt_CO2_yr', sf.when(sf.col('Announced_capacity_Mt_CO2_yr').contains('-'), split_col.getItem(1)).otherwise(sf.col('Announced_capacity_Mt_CO2_yr')).cast('double'))
 
-# Drop the original 'value' column
-df = df.drop('Announced_capacity_Mt_CO2_yr')
+# Substituir coluna original pelas novas
+colunas = df.columns
+pos = colunas.index("Announced_capacity_Mt_CO2_yr")
+colunas[pos] = "Announced_capacity_low_Mt_CO2_yr"
+colunas.insert(pos+1, "Announced_capacity_high_Mt_CO2_yr")
+colunas = colunas[:-2]
+df = df.select(colunas)
 
-columns_order = ['Project_name', 'ID', 'Country', 'Partners', 'Project_type', 'Announcement', 'FID', 'Operation', 'Suspension_decommissioning', 'Project_Status', 'Project_phase', 'Announced_capacity_low_Mt_CO2_yr', 'Announced_capacity_high_Mt_CO2_yr', 'Estimated_capacity_by_IEA_Mt_CO2_yr', 'Sector', 'Fate_of_carbon', 'Part_of_CCUS_hub', 'Region', 'Link_1', 'Link_2', 'Link_3', 'Link_4', 'Link_5', 'Link_6', 'Link_7']
-
-df = df.select(*columns_order)
-
-
-# COMMAND ----------
-
-L = [1, 2, 3, 4, 5]
-
-# Encontra a posição do elemento 3
-posicao = L.index(3)
-
-# Remove o elemento 3
-L.remove(3)
-
-# Insere os elementos 6 e 7 na posição encontrada
-L.insert(posicao, 6)
-L.insert(posicao + 1, 7)
-
-print(L)  # [1, 2, 6, 7, 4, 5]
+display(df.limit(3))
 
 # COMMAND ----------
 
@@ -215,7 +197,42 @@ print(L)  # [1, 2, 6, 7, 4, 5]
 
 # COMMAND ----------
 
-# Fazer comments!!!
+# MAGIC %md
+# MAGIC ## Definir descrição da tabela e comentários dos campos
+
+# COMMAND ----------
+
+descricao = "A tabela contém informações sobre projetos de captura, utilização e armazenamento de carbono (CCUS) ao redor do mundo. Ela inclui dados como o nome dos projetos, país, parceiros envolvidos, tipo de projeto, ano de anúncio, ano da decisão final de investimento, ano de operação, ano de suspensão/descomissionamento, status do projeto, fase do projeto, capacidade anunciada e estimada para captura, transporte e armazenamento de CO2, setor, destino do carbono, se o projeto faz parte de um hub CCUS, região, e links para artigos de notícias sobre o projeto. Esta tabela fornece insights valiosos sobre o panorama global dos projetos de CCUS e seu status atual."
+
+# COMMAND ----------
+
+comentarios = {
+    "Project_name": "Nome do projeto",
+    "ID": "Identificação única do projeto",
+    "Country": "País onde o projeto está localizado",
+    "Partners": "Parceiros envolvidos no projeto",
+    "Project_type": "Tipo de projeto",
+    "Announcement": "Ano de anúncio do projeto",
+    "FID": "Ano da decisão final de investimento",
+    "Operation": "Ano de início da operação do projeto",
+    "Suspension_decommissioning": "Ano de suspensão ou descomissionamento do projeto",
+    "Project_Status": "Status atual do projeto",
+    "Project_phase": "Fase atual do projeto",
+    "Announced_capacity_low_Mt_CO2_yr": "Capacidade mínima anunciada para captura de CO2 em milhões de toneladas por ano",
+    "Announced_capacity_high_Mt_CO2_yr": "Capacidade máxima anunciada para captura de CO2 em milhões de toneladas por ano",
+    "Estimated_capacity_by_IEA_Mt_CO2_yr": "Capacidade estimada pela IEA para captura de CO2 em milhões de toneladas por ano",
+    "Sector": "Setor industrial do projeto",
+    "Fate_of_carbon": "Destino do carbono capturado",
+    "Part_of_CCUS_hub": "Indica se o projeto faz parte de um hub CCUS",
+    "Region": "Região onde o projeto está localizado",
+    "Ref_1": "Link para o primeiro artigo de notícias sobre o projeto",
+    "Ref_2": "Link para o segundo artigo de notícias sobre o projeto",
+    "Ref_3": "Link para o terceiro artigo de notícias sobre o projeto",
+    "Ref_4": "Link para o quarto artigo de notícias sobre o projeto",
+    "Ref_5": "Link para o quinto artigo de notícias sobre o projeto",
+    "Ref_6": "Link para o sexto artigo de notícias sobre o projeto",
+    "Ref_7": "Link para o sétimo artigo de notícias sobre o projeto"
+}
 
 # COMMAND ----------
 
